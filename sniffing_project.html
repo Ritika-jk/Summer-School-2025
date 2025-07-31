@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Packet Sniffing Demonstration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Cyber Tech (Dark Slate, Electric Blue, Green, Red) -->
+    <!-- Application Structure Plan: A single-page, vertical scrolling narrative. The structure guides the user through a story: introduction, setup, an interactive multi-step attack simulation, the data reveal, security implications, and mitigation. This story-based flow is more engaging and memorable than a static slide deck. A sticky top navigation allows users to jump to any part of the story, supporting both linear and non-linear exploration. This design choice makes a technical topic more accessible and easier to digest. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Lab Setup -> Goal: Organize -> Viz/Method: HTML/CSS diagram. Interaction: Hover effects on VM cards. Justification: More dynamic and informative than a static image.
+        - Report Info: Step-by-step process -> Goal: Change/Process -> Viz/Method: Interactive, multi-stage component with JS. Interaction: User clicks a button to progress through simulated terminal and browser actions. Justification: Actively involves the user in the learning process, enhancing understanding.
+        - Report Info: Captured credentials -> Goal: Inform/Impact -> Viz/Method: Styled text block mimicking a data stream, with credentials highlighted. Justification: Creates a clear, impactful "reveal" moment.
+        - Report Info: Security Implications -> Goal: Compare -> Viz/Method: Side-by-side comparison cards using Flexbox and icons. Justification: Provides a quick, scannable visual contrast between HTTP and HTTPS.
+        - Report Info: Mitigation -> Goal: Inform -> Viz/Method: Styled checklist. Justification: Presents actionable advice in a clear, easy-to-read format.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F4F8;
+            color: #1E293B;
+        }
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .section {
+            min-height: 100vh;
+            padding: 8rem 2rem 4rem;
+        }
+        .nav-link {
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #3B82F6;
+            transform: translateY(-2px);
+        }
+        .step-content {
+            display: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .step-content.active {
+            display: block;
+        }
+        .terminal-window {
+            background-color: #1E293B;
+            color: #E2E8F0;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 1rem;
+        }
+        .terminal-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background-color: #334155;
+            color: #94A3B8;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #475569;
+        }
+        .browser-window {
+            border: 1px solid #CBD5E1;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            background-color: white;
+        }
+        .browser-header {
+            padding: 0.75rem;
+            background-color: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .browser-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+        }
+        .browser-address-bar {
+            background-color: #E2E8F0;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            width: 100%;
+            color: #475569;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-lg shadow-md">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="font-bold text-xl text-blue-600">PacketSniffer Demo</div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#intro" class="nav-link text-slate-600 font-medium">Intro</a>
+                <a href="#setup" class="nav-link text-slate-600 font-medium">Setup</a>
+                <a href="#attack" class="nav-link text-slate-600 font-medium">Demonstration</a>
+                <a href="#implications" class="nav-link text-slate-600 font-medium">Implications</a>
+                <a href="#mitigation" class="nav-link text-slate-600 font-medium">Mitigation</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-2 pb-4">
+            <a href="#intro" class="block py-2 nav-link text-slate-600 font-medium">Intro</a>
+            <a href="#setup" class="block py-2 nav-link text-slate-600 font-medium">Setup</a>
+            <a href="#attack" class="block py-2 nav-link text-slate-600 font-medium">Demonstration</a>
+            <a href="#implications" class="block py-2 nav-link text-slate-600 font-medium">Implications</a>
+            <a href="#mitigation" class="block py-2 nav-link text-slate-600 font-medium">Mitigation</a>
+        </div>
+    </nav>
+
+    <main>
+        <section id="intro" class="section flex items-center justify-center text-center bg-white">
+            <div class="container mx-auto">
+                <h1 class="text-4xl md:text-6xl font-bold text-slate-900 mb-4">Packet Sniffing Demonstration</h1>
+                <p class="text-xl md:text-2xl text-slate-600 mb-8">Capturing Unencrypted HTTP Traffic in a Controlled Environment</p>
+                <div class="flex justify-center items-center space-x-8">
+                    <div class="text-center">
+                        <span class="text-6xl">🖥️</span>
+                        <p class="mt-2 font-semibold">Kali Linux</p>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-6xl">🦈</span>
+                        <p class="mt-2 font-semibold">Wireshark</p>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-6xl">💻</span>
+                        <p class="mt-2 font-semibold">Windows</p>
+                    </div>
+                </div>
+                 <a href="#setup" class="mt-12 inline-block bg-blue-600 text-white font-bold py-3 px-8 rounded-full hover:bg-blue-700 transition-transform transform hover:scale-105">
+                    Start the Demo
+                </a>
+            </div>
+        </section>
+
+        <section id="setup" class="section flex items-center justify-center">
+            <div class="container mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-2">Lab Setup</h2>
+                <p class="text-lg text-slate-600 mb-12">This is the virtual environment where our demonstration takes place.</p>
+                <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-lg text-center transform hover:scale-105 transition-transform">
+                        <span class="text-5xl">🖥️</span>
+                        <h3 class="text-xl font-bold mt-4">Kali Linux VM</h3>
+                        <p class="text-slate-500">The Attacker Machine</p>
+                        <p class="font-mono text-sm bg-slate-100 p-2 rounded mt-2">Wireshark Pre-installed</p>
+                    </div>
+
+                    <div class="text-5xl font-bold text-slate-400 my-4 md:my-0">↔️</div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-lg text-center transform hover:scale-105 transition-transform">
+                        <span class="text-5xl">💻</span>
+                        <h3 class="text-xl font-bold mt-4">Windows 10 VM</h3>
+                        <p class="text-slate-500">The Victim Machine</p>
+                        <p class="font-mono text-sm bg-slate-100 p-2 rounded mt-2">Standard Web Browser</p>
+                    </div>
+                </div>
+                <div class="mt-12 bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto">
+                    <h3 class="font-bold text-lg mb-2">Target Website</h3>
+                    <p class="text-slate-600">We will be targeting a test website that uses an unencrypted login form.</p>
+                    <p class="font-mono bg-slate-100 p-3 rounded mt-4 text-blue-600">http://testphp.vulnweb.com</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="attack" class="section flex items-center justify-center bg-white">
+            <div class="container mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-2">The Demonstration</h2>
+                <p class="text-lg text-slate-600 mb-12">Follow the steps below to see how easily unencrypted data can be captured.</p>
+                
+                <div class="max-w-4xl mx-auto bg-slate-50 p-8 rounded-xl shadow-2xl">
+                    <div class="flex border-b border-slate-200 mb-8">
+                        <button data-step="1" class="step-btn flex-1 p-4 font-bold border-b-4 border-blue-600 text-blue-600">Step 1: Connect</button>
+                        <button data-step="2" class="step-btn flex-1 p-4 font-medium border-b-4 border-transparent text-slate-500">Step 2: Login</button>
+                        <button data-step="3" class="step-btn flex-1 p-4 font-medium border-b-4 border-transparent text-slate-500">Step 3: Sniff</button>
+                        <button data-step="4" class="step-btn flex-1 p-4 font-medium border-b-4 border-transparent text-slate-500">Step 4: Analyze</button>
+                    </div>
+
+                    <div id="step-1" class="step-content active">
+                        <h3 class="text-2xl font-bold mb-4">Establish Connection</h3>
+                        <p class="text-slate-600 mb-6">First, the attacker confirms a network connection to the victim machine from the Kali VM.</p>
+                        <div class="terminal-window text-left">
+                            <div class="terminal-header">
+                                <div class="terminal-dot" style="background:#ef4444;"></div>
+                                <div class="terminal-dot" style="background:#f59e0b;"></div>
+                                <div class="terminal-dot" style="background:#22c55e;"></div>
+                            </div>
+                            <button class="copy-btn" data-copy="ping <Windows_VM_IP>">Copy</button>
+                            <code class="font-mono">
+                                <span class="text-green-400">kali@kali</span>:<span class="text-blue-400">~</span>$ ping &lt;Windows_VM_IP&gt;<br>
+                                PING &lt;Windows_VM_IP&gt; 56(84) bytes of data.<br>
+                                64 bytes from &lt;Windows_VM_IP&gt;: icmp_seq=1 ttl=128 time=0.5 ms<br>
+                                64 bytes from &lt;Windows_VM_IP&gt;: icmp_seq=2 ttl=128 time=0.6 ms<br>
+                                <span class="text-gray-500">...successful replies confirm connectivity.</span>
+                            </code>
+                        </div>
+                    </div>
+
+                    <div id="step-2" class="step-content">
+                        <h3 class="text-2xl font-bold mb-4">Simulate Victim Login</h3>
+                        <p class="text-slate-600 mb-6">On the Windows VM, the user logs into the insecure website.</p>
+                        <div class="browser-window text-left">
+                             <div class="browser-header">
+                                <div class="browser-dot" style="background:#ef4444;"></div>
+                                <div class="browser-dot" style="background:#f59e0b;"></div>
+                                <div class="browser-dot" style="background:#22c55e;"></div>
+                                <div class="browser-address-bar">http://testphp.vulnweb.com/login.php</div>
+                            </div>
+                            <div class="p-8">
+                                <h4 class="text-xl font-bold mb-4">Login</h4>
+                                <div class="space-y-4">
+                                    <input type="text" value="test" class="w-full p-2 border rounded bg-slate-100" disabled>
+                                    <input type="password" value="test" class="w-full p-2 border rounded bg-slate-100" disabled>
+                                    <button class="w-full bg-blue-500 text-white p-2 rounded">Login</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step-3" class="step-content">
+                        <h3 class="text-2xl font-bold mb-4">Start Sniffing</h3>
+                        <p class="text-slate-600 mb-6">The attacker starts Wireshark on the Kali VM to capture network traffic.</p>
+                        <div class="terminal-window text-left">
+                             <div class="terminal-header">
+                                <div class="terminal-dot" style="background:#ef4444;"></div>
+                                <div class="terminal-dot" style="background:#f59e0b;"></div>
+                                <div class="terminal-dot" style="background:#22c55e;"></div>
+                            </div>
+                            <code class="font-mono">
+                                <span class="text-green-400">kali@kali</span>:<span class="text-blue-400">~</span>$ sudo wireshark<br><br>
+                                <span class="text-gray-400">1. Wireshark GUI opens.</span><br>
+                                <span class="text-gray-400">2. Select 'eth0' interface.</span><br>
+                                <span class="text-gray-400">3. Click the blue shark fin to start capture.</span><br>
+                                <span class="text-gray-400">4. Apply filter: <span class="text-yellow-400">http.request.method == POST</span></span>
+                            </code>
+                        </div>
+                    </div>
+
+                    <div id="step-4" class="step-content">
+                        <h3 class="text-2xl font-bold mb-4 text-red-600">Capture & Analyze</h3>
+                        <p class="text-slate-600 mb-6">The attacker finds the HTTP POST request and inspects its contents.</p>
+                        <div class="terminal-window text-left bg-red-900/20 border border-red-500">
+                             <div class="terminal-header border-b-red-500/50">
+                                <div class="text-red-400 font-bold">HTTP Stream</div>
+                            </div>
+                            <code class="font-mono text-slate-300">
+                                POST /login.php HTTP/1.1<br>
+                                Host: testphp.vulnweb.com<br>
+                                Content-Type: application/x-www-form-urlencoded<br>
+                                <br>
+                                <span class="bg-red-600 text-white p-2 rounded">uname=test&pass=test</span>
+                                <br><br>
+                                <span class="text-red-400 font-bold">Plaintext credentials captured!</span>
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="implications" class="section flex items-center justify-center">
+            <div class="container mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-2">Security Implications</h2>
+                <p class="text-lg text-slate-600 mb-12">Why sending data over HTTP is dangerous.</p>
+                <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <div class="bg-white p-8 rounded-lg shadow-lg border-t-4 border-red-500">
+                        <div class="flex items-center justify-center text-red-500 mb-4">
+                            <span class="text-4xl mr-4">🔓</span>
+                            <h3 class="text-2xl font-bold">HTTP (Unsecure)</h3>
+                        </div>
+                        <p class="text-slate-600">Transmits all data, including passwords and personal information, in plaintext. Anyone on the same network can easily read it.</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-lg shadow-lg border-t-4 border-green-500">
+                        <div class="flex items-center justify-center text-green-500 mb-4">
+                            <span class="text-4xl mr-4">🔒</span>
+                            <h3 class="text-2xl font-bold">HTTPS (Secure)</h3>
+                        </div>
+                        <p class="text-slate-600">Encrypts all data between your browser and the server. Even if intercepted, the data is unreadable without the encryption key.</p>
+                    </div>
+                </div>
+                 <p class="mt-8 font-bold text-xl text-slate-800">The Solution: Always Use HTTPS</p>
+            </div>
+        </section>
+
+        <section id="mitigation" class="section flex items-center justify-center bg-white">
+            <div class="container mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-2">Mitigation Steps</h2>
+                <p class="text-lg text-slate-600 mb-12">How to protect against this type of attack.</p>
+                <div class="max-w-2xl mx-auto text-left space-y-6">
+                    <div class="bg-slate-50 p-6 rounded-lg shadow-md flex items-start">
+                        <span class="text-green-500 text-3xl mr-4">✅</span>
+                        <div>
+                            <h3 class="font-bold text-xl">Use HTTPS Everywhere</h3>
+                            <p class="text-slate-600">Encrypt website traffic to protect user data. Free certificates are available from services like Let's Encrypt.</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-lg shadow-md flex items-start">
+                        <span class="text-green-500 text-3xl mr-4">✅</span>
+                        <div>
+                            <h3 class="font-bold text-xl">Deploy VPNs</h3>
+                            <p class="text-slate-600">Use Virtual Private Networks (VPNs) for remote access to create a secure, encrypted tunnel over public networks.</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-lg shadow-md flex items-start">
+                        <span class="text-green-500 text-3xl mr-4">✅</span>
+                        <div>
+                            <h3 class="font-bold text-xl">Train Staff and Users</h3>
+                            <p class="text-slate-600">Educate users to look for the padlock icon and "https://" in the address bar before entering sensitive information.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-800 text-white py-6">
+        <div class="container mx-auto text-center text-slate-400">
+            <p> MINI PROJECT PRESENTATION DEMO BY: RITIKA SHARMA </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const stepButtons = document.querySelectorAll('.step-btn');
+            const stepContents = document.querySelectorAll('.step-content');
+            const copyButtons = document.querySelectorAll('.copy-btn');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            stepButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const step = button.dataset.step;
+
+                    stepButtons.forEach(btn => {
+                        btn.classList.remove('border-blue-600', 'text-blue-600', 'font-bold');
+                        btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+                    });
+                    button.classList.add('border-blue-600', 'text-blue-600', 'font-bold');
+                    button.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+
+                    stepContents.forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(`step-${step}`).classList.add('active');
+                });
+            });
+
+            copyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const textToCopy = button.dataset.copy;
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        button.textContent = 'Copied!';
+                        setTimeout(() => {
+                            button.textContent = 'Copy';
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                    }
+                    document.body.removeChild(textarea);
+                });
+            });
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    if (mobileMenu.contains(e.target)) {
+                         mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
